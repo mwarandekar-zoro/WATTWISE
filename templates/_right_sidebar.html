@@ -21,25 +21,6 @@
     <button id="chat-send" style="padding: 8px 12px; margin-top: 0; font-size: 14px; width: auto;">➤</button>
   </div>
 
-  <!-- RECENT BILLS -->
-  <h3 style="margin-top: 0; padding-top: 14px; border-top: 1px solid var(--border);">Recent Bills</h3>
-  <a class="see-all" href="{{ url_for('history_page') }}">View full history &amp; trends &rarr;</a>
-
-  <div style="overflow-y: auto;">
-  {% if recent_history %}
-    {% for r in recent_history %}
-    <div class="history-item">
-      <div class="h-month">{{ r.billing_month or (r.upload_date[:10] if r.upload_date else '—') }}</div>
-      <div class="h-meta">
-        <span>{{ r.units_consumed or '—' }} units{{ ' · ₹' + r.bill_amount|string if r.bill_amount else '' }}</span>
-        <span class="h-score">{{ (r.energy_score|string + '/100') if r.energy_score is not none else '—' }}</span>
-      </div>
-    </div>
-    {% endfor %}
-  {% else %}
-    <p class="history-empty">No bills analyzed yet. Once you do, they'll show up here.</p>
-  {% endif %}
-  </div>
 </aside>
 
 <script>

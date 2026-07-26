@@ -158,7 +158,7 @@ def get_bills_by_ids(ids: list[int]) -> list[dict]:
     rows = conn.execute(
         f"SELECT * FROM bills WHERE id IN ({placeholders}) ORDER BY upload_date ASC", ids
     ).fetchall()
-    conn.close()
+    conn.close()        
     return [dict(row) for row in rows]
 
 
@@ -186,7 +186,7 @@ def get_trend_data() -> dict:
     }
 
 
-<<<<<<< HEAD
+
 def get_stats() -> dict:
     """Aggregate numbers for the Dashboard overview cards."""
     conn = _get_connection()
@@ -206,8 +206,7 @@ def get_stats() -> dict:
     }
 
 
-=======
->>>>>>> 678ede362b6dfb8746e9ab27f1e398fe3bc83a7e
+
 def delete_history() -> int:
     """Clear all saved history. Returns number of rows deleted."""
     conn = _get_connection()

@@ -184,13 +184,9 @@ a.back { color: var(--accent); text-decoration: none; font-size: 13px; }
   padding: 24px 20px 60px;
 }
 
-<<<<<<< HEAD
 .layout-no-sidebar {
   grid-template-columns: 320px 1fr;
 }
-
-=======
->>>>>>> 678ede362b6dfb8746e9ab27f1e398fe3bc83a7e
 .main-content {
   min-width: 0;
 }
@@ -339,8 +335,11 @@ a.back { color: var(--accent); text-decoration: none; font-size: 13px; }
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 18px;
-  max-height: 720px;
-  overflow-y: auto;
+  height: calc(100vh - 48px);
+  max-height: none;
+  overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .history-panel h3 {

@@ -35,11 +35,8 @@ from llm import (
     chat_about_bill,
     build_bill_context,
     BOT_NAME,
-<<<<<<< HEAD
     MODEL as LLM_MODEL,
     GEMINI_API_KEY,
-=======
->>>>>>> 678ede362b6dfb8746e9ab27f1e398fe3bc83a7e
 )
 from rag.retriever import retrieve_context
 import history
@@ -99,8 +96,85 @@ def _recent_history(limit: int = 6) -> list[dict]:
     return history.get_history(limit=limit)
 
 
+def _run_pipeline(current_path: str, previous_units: int | None,
+                   appliance_hours: dict | None = None,
+                   star_ratings: dict | None = None) -> dict:
+    """
+    The full extract -> vision fallback -> calculate -> RAG -> LLM -> save
+    pipeline for ONE already-saved file. Shared by the single-bill upload
+    form and the bulk-upload endpoint so both stay in sync and neither can
+    drift out of step with the other.
+
+    Never raises for the expected "couldn't read this bill confidently"
+    case -- that comes back as status="partial" so the caller can decide
+    how to present it, instead of crashing a whole batch over one bad file.
+    """
+    raw_text = extract_text(current_path)
+    bill_data = parse_bill_text(raw_text)
+    visual_notes = None
+
+    if bill_data.get("missing_fields"):
+        bill_data, visual_notes = _merge_vision_fields(bill_data, current_path)
+
+    if bill_data.get("units_consumed") is None:
+        # OCR + vision genuinely couldn't read the bill -- fall back to a
+        # freeform read of the whole document rather than failing outright.
+        ai_analysis = analyze_bill_document_freeform(current_path, raw_text)
+        return {
+            "status": "partial",
+            "bill_data": bill_data,
+            "previous_units": previous_units,
+            "visual_notes": visual_notes,
+            "ai_analysis": ai_analysis,
+            "bill_id": None,
+        }
+
+    # units_consumed IS known here -- previous_units may still be None
+    # (e.g. this is the very first bill ever analyzed, with nothing to
+    # compare against yet). calculate_metrics handles that gracefully
+    # (percentage_change comes back None), so we still calculate, score,
+    # and save it rather than discarding a perfectly readable bill just
+    # because there's no prior bill to compare it to. This also matters
+    # for bulk uploads: the first bill in a fresh batch needs to be saved
+    # so its units become the baseline the next bill compares against.
+    metrics = calculate_metrics(
+        current_units=bill_data["units_consumed"],
+        previous_units=previous_units,
+        bill_amount=bill_data.get("bill_amount") or 0,
+    )
+    if previous_units is None:
+        metrics["trend"] = "first bill"
+        metrics["difference"] = None
+    score = energy_score(metrics["percentage_change"], bill_data["units_consumed"])
+
+    breakdown = appliance_breakdown(appliance_hours, star_ratings=star_ratings) if appliance_hours else None
+
+    rag_query_parts = [f"electricity bill {metrics['trend']} {bill_data['units_consumed']} units"]
+    if breakdown:
+        top_appliance = max(breakdown.items(), key=lambda kv: kv[1]["kwh"])[0]
+        rag_query_parts.append(f"{top_appliance} energy saving tips")
+    rag_context, rag_sources = retrieve_context(" ".join(rag_query_parts), top_k=3)
+
+    ai_analysis = analyze_bill_with_llm(bill_data, metrics, score, breakdown, rag_context=rag_context)
+
+    bill_id = history.save_bill_record(bill_data, metrics, score, ai_analysis,
+                                        breakdown=breakdown, image_path=current_path)
+
+    return {
+        "status": "success",
+        "bill_data": bill_data,
+        "previous_units": previous_units,
+        "visual_notes": visual_notes,
+        "metrics": metrics,
+        "score": score,
+        "breakdown": breakdown,
+        "ai_analysis": ai_analysis,
+        "rag_sources": rag_sources,
+        "bill_id": bill_id,
+    }
+
+
 @app.route("/")
-<<<<<<< HEAD
 def dashboard():
     stats = history.get_stats()
     recent = _recent_history(limit=8)
@@ -117,9 +191,6 @@ def dashboard():
 
 @app.route("/upload")
 def upload_page():
-=======
-def index():
->>>>>>> 678ede362b6dfb8746e9ab27f1e398fe3bc83a7e
     return render_template(
         "index.html",
         appliances=list(APPLIANCES.keys()),
@@ -137,31 +208,13 @@ def analyze_bill():
 
     if not current_file or current_file.filename == "":
         flash("Please choose a bill file to upload.")
-<<<<<<< HEAD
         return redirect(url_for("upload_page"))
 
     if not allowed_file(current_file.filename):
         flash("Unsupported file type. Upload a PDF, JPG, or PNG.")
         return redirect(url_for("upload_page"))
-=======
-        return redirect(url_for("index"))
-
-    if not allowed_file(current_file.filename):
-        flash("Unsupported file type. Upload a PDF, JPG, or PNG.")
-        return redirect(url_for("index"))
->>>>>>> 678ede362b6dfb8746e9ab27f1e398fe3bc83a7e
 
     current_path = _save_upload(current_file)
-
-    # --- Phase 1 & 2: extract + parse (deterministic, fast, free) ---
-    raw_text = extract_text(current_path)
-    bill_data = parse_bill_text(raw_text)
-    visual_notes = None
-
-    # --- Phase 1b: if regex missed fields, let the LLM SEE the actual
-    # document (image/PDF bytes), not just OCR text. ---
-    if bill_data.get("missing_fields"):
-        bill_data, visual_notes = _merge_vision_fields(bill_data, current_path)
 
     previous_units = None
     if previous_file and previous_file.filename != "" and allowed_file(previous_file.filename):
@@ -175,43 +228,6 @@ def analyze_bill():
     if previous_units is None:
         manual_previous = request.form.get("previous_units")
         previous_units = int(manual_previous) if manual_previous else None
-
-    # If we STILL can't derive the required comparison numbers even after
-    # the vision pass, fall back to a freeform vision analysis of the whole
-    # document instead of failing completely.
-    if bill_data.get("units_consumed") is None or previous_units is None:
-        ai_analysis = analyze_bill_document_freeform(current_path, raw_text)
-        session["bill_context"] = f"Raw bill text/notes: {raw_text}\n{ai_analysis}"
-        session["chat_history"] = []
-        session["last_bill_id"] = None  # not coherent enough to save to history
-
-        return render_template(
-            "results.html",
-            bot_name=BOT_NAME,
-            bill_data=bill_data,
-            previous_units=previous_units,
-            visual_notes=visual_notes,
-            metrics={"difference": "—", "percentage_change": "—", "trend": "Unknown", "cost_per_unit": "—"},
-            score={"score": "—", "rating": "Unknown"},
-            breakdown=None,
-            ai_analysis=ai_analysis,
-            rag_sources=[],
-            partial_analysis=True,
-            appliances=list(APPLIANCES.keys()),
-            star_ratings=sorted(STAR_RATING_MULTIPLIERS.keys()),
-            recent_history=_recent_history(),
-            bill_id=None,
-            email_configured=email_service.is_configured(),
-            active_page="upload",
-        )
-
-    # --- Phase 3 & 4: calculation engine + energy score ---
-    metrics = calculate_metrics(
-        current_units=bill_data["units_consumed"],
-        previous_units=previous_units,
-        bill_amount=bill_data.get("bill_amount") or 0,
-    )
-    score = energy_score(metrics["percentage_change"], bill_data["units_consumed"])
 
     # --- Phase 6 (+ star ratings): optional appliance usage from the form ---
     appliance_hours = {}
@@ -230,21 +246,36 @@ def analyze_bill():
             except ValueError:
                 pass
 
-    breakdown = appliance_breakdown(appliance_hours, star_ratings=star_ratings) if appliance_hours else None
+    result = _run_pipeline(current_path, previous_units, appliance_hours, star_ratings)
 
-    # --- Phase 7: RAG retrieval, grounded on what actually happened in this bill ---
-    rag_query_parts = [f"electricity bill {metrics['trend']} {bill_data['units_consumed']} units"]
-    if breakdown:
-        top_appliance = max(breakdown.items(), key=lambda kv: kv[1]["kwh"])[0]
-        rag_query_parts.append(f"{top_appliance} energy saving tips")
-    rag_context, rag_sources = retrieve_context(" ".join(rag_query_parts), top_k=3)
+    if result["status"] == "partial":
+        session["bill_context"] = f"Raw bill text/notes: {result['ai_analysis']}"
+        session["chat_history"] = []
+        session["last_bill_id"] = None  # not coherent enough to save to history
 
-    # --- Phase 8: LLM analysis, grounded in the retrieved knowledge ---
-    ai_analysis = analyze_bill_with_llm(bill_data, metrics, score, breakdown, rag_context=rag_context)
+        return render_template(
+            "results.html",
+            bot_name=BOT_NAME,
+            bill_data=result["bill_data"],
+            previous_units=previous_units,
+            visual_notes=result["visual_notes"],
+            metrics={"difference": "—", "percentage_change": "—", "trend": "Unknown", "cost_per_unit": "—"},
+            score={"score": "—", "rating": "Unknown"},
+            breakdown=None,
+            ai_analysis=result["ai_analysis"],
+            rag_sources=[],
+            partial_analysis=True,
+            appliances=list(APPLIANCES.keys()),
+            star_ratings=sorted(STAR_RATING_MULTIPLIERS.keys()),
+            recent_history=_recent_history(),
+            bill_id=None,
+            email_configured=email_service.is_configured(),
+            active_page="upload",
+        )
 
-    # --- Phase 11: save to history (permanent row, never overwritten) ---
-    bill_id = history.save_bill_record(bill_data, metrics, score, ai_analysis,
-                                        breakdown=breakdown, image_path=current_path)
+    bill_data, metrics, score, breakdown = result["bill_data"], result["metrics"], result["score"], result["breakdown"]
+    ai_analysis, rag_sources, bill_id = result["ai_analysis"], result["rag_sources"], result["bill_id"]
+    visual_notes = result["visual_notes"]
 
     bill_context = build_bill_context(bill_data, metrics, score, breakdown)
     if visual_notes:
@@ -279,6 +310,72 @@ def analyze_bill():
     )
 
 
+# --- Feature 4: bulk upload -- any number of bills, each auto-extracted,
+# auto-analyzed, auto-saved to SQLite. Returns JSON so the upload page can
+# show live progress and update itself without a page reload. ---
+@app.route("/analyze_batch", methods=["POST"])
+def analyze_batch():
+    files = [f for f in request.files.getlist("bills") if f and f.filename]
+    if not files:
+        return jsonify({"error": "No files received."}), 400
+
+    # Chain the comparison baseline: start from whatever bill was most
+    # recently saved, then keep advancing it as each new upload in this
+    # batch gets saved -- so uploading, say, 6 months of bills at once
+    # compares each one to the one before it automatically.
+    last_saved = history.get_history(limit=1)
+    running_previous_units = last_saved[0]["units_consumed"] if last_saved else None
+
+    results = []
+    for f in files:
+        if not allowed_file(f.filename):
+            results.append({
+                "filename": f.filename,
+                "status": "error",
+                "message": "Unsupported file type (use PDF, JPG, or PNG).",
+            })
+            continue
+
+        try:
+            path = _save_upload(f)
+            outcome = _run_pipeline(path, running_previous_units)
+        except Exception as exc:
+            results.append({"filename": f.filename, "status": "error", "message": str(exc)})
+            continue
+
+        if outcome["status"] == "success":
+            running_previous_units = outcome["bill_data"].get("units_consumed", running_previous_units)
+            bd, m, sc = outcome["bill_data"], outcome["metrics"], outcome["score"]
+            results.append({
+                "filename": f.filename,
+                "status": "success",
+                "bill_id": outcome["bill_id"],
+                "billing_month": bd.get("billing_month"),
+                "units_consumed": bd.get("units_consumed"),
+                "bill_amount": bd.get("bill_amount"),
+                "percentage_change": m.get("percentage_change"),
+                "trend": m.get("trend"),
+                "energy_score": sc.get("score"),
+                "energy_rating": sc.get("rating"),
+            })
+        else:
+            results.append({
+                "filename": f.filename,
+                "status": "partial",
+                "message": "Couldn't confidently extract enough fields for full analysis "
+                           "(saved nowhere -- try uploading it on its own with a manual previous-units value).",
+            })
+
+    return jsonify({"results": results, "stats": history.get_stats()})
+
+
+# --- Small JSON endpoint so the Recent Bills widget can refresh itself
+# after a bulk upload finishes, without reloading the page. ---
+@app.route("/api/recent_history")
+def api_recent_history():
+    return jsonify({"recent_history": _recent_history()})
+
+
 # --- Phase 9: savings simulator (now star-rating aware) ---
 @app.route("/simulate_savings", methods=["POST"])
 def simulate_savings_route():
@@ -303,9 +400,6 @@ def simulate_savings_route():
     return jsonify(result)
 
 
-
-
-
 # --- Phase 10: Wattson chat endpoint (used by the widget on any page) ---
 @app.route("/chat", methods=["POST"])
 def chat():
@@ -326,20 +420,6 @@ def chat():
     return jsonify({"reply": reply})
 
 
-<<<<<<< HEAD
-# --- Wattson AI: dedicated full-page chat (bigger than the sidebar widget) ---
-@app.route("/wattson")
-def wattson_page():
-    return render_template(
-        "wattson.html",
-        bot_name=BOT_NAME,
-        has_bill_context=bool(session.get("bill_context")),
-        active_page="wattson",
-    )
-
-
-=======
->>>>>>> 678ede362b6dfb8746e9ab27f1e398fe3bc83a7e
 # --- Phase 11: history dashboard ---
 @app.route("/history")
 def history_page():
@@ -355,7 +435,15 @@ def history_clear():
     flash(f"Cleared {deleted} saved bill(s) from history.")
     return redirect(url_for("history_page"))
 
-
+# --- Wattson AI: dedicated full-page chat (bigger than the sidebar widget) ---
+@app.route("/wattson")
+def wattson_page():
+    return render_template(
+        "wattson.html",
+        bot_name=BOT_NAME,
+        has_bill_context=bool(session.get("bill_context")),
+        active_page="wattson",
+    )
 # --- Compare Bills: select any number of saved bills and see them side by side ---
 @app.route("/compare")
 def compare_page():
@@ -369,7 +457,6 @@ def compare_page():
     )
 
 
-<<<<<<< HEAD
 # --- Settings: app configuration status + appliance reference data ---
 @app.route("/settings")
 def settings_page():
@@ -387,8 +474,6 @@ def settings_page():
     )
 
 
-=======
->>>>>>> 678ede362b6dfb8746e9ab27f1e398fe3bc83a7e
 # --- PDF export ---
 @app.route("/export/<int:bill_id>")
 def export_pdf(bill_id):

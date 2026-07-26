@@ -25,6 +25,22 @@
       {% endwith %}
 
       <div class="card">
+        <h2>📤 Bulk Upload — analyze multiple bills at once</h2>
+        <p class="note" style="margin-top:-8px; margin-bottom:16px;">
+          Select any number of bills. Each one is automatically extracted, analyzed, and saved to
+          your history — compared against whichever bill was most recently saved (or the previous
+          file in this same batch). No manual refresh needed: results and your Recent Bills list
+          below update live as each bill finishes.
+        </p>
+        <label for="bulk_files">Bills (PDF or image — select multiple)</label>
+        <input type="file" id="bulk_files" accept=".pdf,.jpg,.jpeg,.png" multiple>
+        <button id="bulk_run" type="button">Analyze All</button>
+
+        <div id="bulk_progress" class="note" style="margin-top:14px; display:none;"></div>
+        <div id="bulk_results" style="margin-top:14px; display:flex; flex-direction:column; gap:10px;"></div>
+      </div>
+
+      <div class="card">
         <h2>Upload your electricity bill</h2>
         <p class="note" style="margin-top:-8px; margin-bottom:16px;">
           WattWise reads your bill both with fast text extraction and, when needed,
@@ -133,6 +149,93 @@
           (data.estimated_savings_rupees ?? '—') + '/month</strong> (using a default ₹8/unit estimate — analyze a bill for your real rate).';
       } catch (err) {
         resultBox.innerHTML = '<span style="color:var(--danger);">Something went wrong reaching the server.</span>';
+      }
+    });
+
+    // ===================== FEATURE 4: BULK UPLOAD =====================
+    function renderRecentBillItem(r) {
+      const month = r.billing_month || (r.upload_date ? r.upload_date.slice(0, 10) : '—');
+      const units = (r.units_consumed !== null && r.units_consumed !== undefined) ? r.units_consumed : '—';
+      const amountPart = r.bill_amount ? ' · ₹' + r.bill_amount : '';
+      const score = (r.energy_score !== null && r.energy_score !== undefined) ? r.energy_score + '/100' : '—';
+      return '<div class="history-item">' +
+        '<div class="h-month">' + month + '</div>' +
+        '<div class="h-meta"><span>' + units + ' units' + amountPart + '</span>' +
+        '<span class="h-score">' + score + '</span></div></div>';
+    }
+
+    async function refreshRecentBills() {
+      const container = document.getElementById('recent-bills-list');
+      if (!container) return;
+      try {
+        const res = await fetch('/api/recent_history');
+        const data = await res.json();
+        if (data.recent_history) {
+          container.innerHTML = data.recent_history.length
+            ? data.recent_history.map(renderRecentBillItem).join('')
+            : '<p class="history-empty">No bills analyzed yet. Once you do, they\'ll show up here.</p>';
+        }
+      } catch (err) { /* non-critical -- leave the existing list as-is */ }
+    }
+
+    document.getElementById('bulk_run').addEventListener('click', async function () {
+      const input = document.getElementById('bulk_files');
+      const files = input.files;
+      const progress = document.getElementById('bulk_progress');
+      const resultsBox = document.getElementById('bulk_results');
+      const btn = this;
+
+      if (!files || files.length === 0) {
+        progress.style.display = 'block';
+        progress.innerHTML = '<span style="color:var(--danger);">Choose at least one bill file first.</span>';
+        return;
+      }
+
+      const formData = new FormData();
+      for (const f of files) formData.append('bills', f);
+
+      btn.disabled = true;
+      resultsBox.innerHTML = '';
+      progress.style.display = 'block';
+      progress.textContent = 'Analyzing ' + files.length + ' bill(s)… this can take a little while for larger batches.';
+
+      try {
+        const res = await fetch('/analyze_batch', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (data.error) {
+          progress.innerHTML = '<span style="color:var(--danger);">' + data.error + '</span>';
+          return;
+        }
+
+        const successCount = data.results.filter(r => r.status === 'success').length;
+        progress.textContent = 'Done — ' + successCount + ' of ' + data.results.length + ' bill(s) fully analyzed and saved.';
+
+        data.results.forEach(function (r) {
+          const div = document.createElement('div');
+          div.className = 'card';
+          div.style.margin = '0';
+          if (r.status === 'success') {
+            div.innerHTML =
+              '<strong style="color:var(--accent-2);">✓ ' + r.filename + '</strong><br>' +
+              '<span class="note">' + (r.billing_month || '—') + ' · ' + (r.units_consumed ?? '—') + ' units · ₹' +
+              (r.bill_amount ?? '—') + ' · ' +
+              (r.percentage_change != null ? (r.percentage_change + '% ' + r.trend) : '—') + ' · Score: ' +
+              (r.energy_score != null ? r.energy_score + '/100 (' + r.energy_rating + ')' : '—') + '</span>';
+          } else if (r.status === 'partial') {
+            div.innerHTML = '<strong style="color:var(--accent);">⚠ ' + r.filename + '</strong><br><span class="note">' + r.message + '</span>';
+          } else {
+            div.innerHTML = '<strong style="color:var(--danger);">✗ ' + r.filename + '</strong><br><span class="note">' + r.message + '</span>';
+          }
+          resultsBox.appendChild(div);
+        });
+
+        input.value = '';
+        refreshRecentBills();
+      } catch (err) {
+        progress.innerHTML = '<span style="color:var(--danger);">Something went wrong reaching the server.</span>';
+      } finally {
+        btn.disabled = false;
       }
     });
   </script>

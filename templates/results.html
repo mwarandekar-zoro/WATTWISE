@@ -16,11 +16,7 @@
 
     <!-- ===================== CENTER: DASHBOARD ===================== -->
     <main class="main-content">
-<<<<<<< HEAD
       <a class="back" href="{{ url_for('upload_page') }}">&larr; Analyze another bill</a>
-=======
-      <a class="back" href="{{ url_for('index') }}">&larr; Analyze another bill</a>
->>>>>>> 678ede362b6dfb8746e9ab27f1e398fe3bc83a7e
 
       <div class="metric-grid" style="margin-top:20px;">
         <div class="metric">
@@ -74,7 +70,7 @@
           Consumer No: {{ bill_data.consumer_number or '—' }}<br>
           Billing Month: {{ bill_data.billing_month or '—' }}<br>
           Cost per Unit: {{ metrics.cost_per_unit if metrics.cost_per_unit != '—' else '—' }}<br>
-          Difference: {{ metrics.difference }} units ({{ metrics.trend }})
+          Difference: {{ (metrics.difference|string + ' units (' + metrics.trend + ')') if metrics.difference is not none else 'No previous bill to compare against yet' }}
         </p>
         {% if visual_notes %}
         <p class="note" style="margin-top:12px;">
