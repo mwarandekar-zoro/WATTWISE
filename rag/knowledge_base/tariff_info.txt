@@ -1,0 +1,7 @@
+Many Indian state electricity boards use slab-based (tiered) tariffs for residential consumers, where the per-unit rate increases as total monthly consumption crosses higher slabs. A household that stays within a lower slab pays less per unit, not just less in total.
+
+Because of slab tariffs, reducing consumption enough to drop into a lower slab can produce savings larger than a simple per-unit-rate times units-saved calculation would suggest.
+
+Time-of-day (ToD) tariffs, where available, charge more per unit during peak evening hours and less during off-peak hours. Shifting heavy appliance use like washing machines to off-peak hours can reduce cost even without using less total energy.
+
+Fixed charges and various surcharges are typically added on top of the per-unit energy charge, which is why cost-per-unit calculated from a real bill (amount divided by units) is usually a bit higher than the board's published base tariff rate.

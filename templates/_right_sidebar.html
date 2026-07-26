@@ -1,0 +1,53 @@
+<aside class="history-panel right-sidebar" style="display: flex; flex-direction: column;">
+  <!-- WATTSON CHAT WIDGET -->
+  <div class="sidebar-header" style="margin:-18px -18px 14px; border-radius:14px 14px 0 0; padding: 14px 16px;">
+    <div class="bot-avatar" style="width: 32px; height: 32px; font-size: 16px;">🤖</div>
+    <div>
+      <div class="bot-name" style="font-size: 14px;">{{ bot_name }}</div>
+      <div class="bot-sub" style="font-size: 11px;">
+        {% if session.get('bill_context') %}
+          ready to chat about your bill
+        {% else %}
+          ask an energy question
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  
+  <div id="chat-log" class="chat-log" style="flex: 1; min-height: 250px; padding: 0 4px 10px; margin-bottom: 10px; overflow-y: auto;"></div>
+
+  <div class="chat-input-row" style="padding: 0; background: transparent; border: none; margin-bottom: 24px;">
+    <input type="text" id="chat-input" placeholder="Ask anything..." style="padding: 8px 10px; font-size: 13px;">
+    <button id="chat-send" style="padding: 8px 12px; margin-top: 0; font-size: 14px; width: auto;">➤</button>
+  </div>
+
+  <!-- RECENT BILLS -->
+  <h3 style="margin-top: 0; padding-top: 14px; border-top: 1px solid var(--border);">Recent Bills</h3>
+  <a class="see-all" href="{{ url_for('history_page') }}">View full history &amp; trends &rarr;</a>
+
+  <div style="overflow-y: auto;">
+  {% if recent_history %}
+    {% for r in recent_history %}
+    <div class="history-item">
+      <div class="h-month">{{ r.billing_month or (r.upload_date[:10] if r.upload_date else '—') }}</div>
+      <div class="h-meta">
+        <span>{{ r.units_consumed or '—' }} units{{ ' · ₹' + r.bill_amount|string if r.bill_amount else '' }}</span>
+        <span class="h-score">{{ (r.energy_score|string + '/100') if r.energy_score is not none else '—' }}</span>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="history-empty">No bills analyzed yet. Once you do, they'll show up here.</p>
+  {% endif %}
+  </div>
+</aside>
+
+<script>
+  window.WATTSON_BOT_NAME = {{ bot_name | tojson }};
+  window.WATTSON_GREETING = {% if session.get('bill_context') %}
+    "Hi, I'm " + {{ bot_name | tojson }} + "! I've got your last analyzed bill handy — ask me anything about it."
+  {% else %}
+    "Hi, I'm " + {{ bot_name | tojson }} + "! Ask me a general energy-saving question, or upload a bill first for personalized answers."
+  {% endif %};
+</script>
+<script src="{{ url_for('static', filename='wattson.js') }}"></script>

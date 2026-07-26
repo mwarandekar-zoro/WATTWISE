@@ -1,0 +1,7 @@
+flask
+pymupdf
+pytesseract
+pillow
+requests
+scikit-learn
+fpdf2

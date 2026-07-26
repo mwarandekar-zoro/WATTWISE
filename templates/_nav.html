@@ -1,0 +1,57 @@
+<aside class="nav-sidebar">
+  <div class="nav-header">
+    <div class="bot-avatar nav-logo">⚡</div>
+    <div>
+      <div class="bot-name">WattWise</div>
+      <div class="bot-sub">AI Energy Advisor</div>
+    </div>
+  </div>
+
+  <nav class="nav-links">
+<<<<<<< HEAD
+    <div class="nav-section-label">Overview</div>
+    <a href="{{ url_for('dashboard') }}" class="nav-link {{ 'active' if active_page == 'dashboard' else '' }}">
+      <span class="nav-icon">🏠</span> Dashboard
+    </a>
+
+    <div class="nav-section-label">Bills</div>
+    <a href="{{ url_for('upload_page') }}" class="nav-link {{ 'active' if active_page == 'upload' else '' }}">
+      <span class="nav-icon">📤</span> Upload Bill
+    </a>
+    <a href="{{ url_for('history_page') }}" class="nav-link {{ 'active' if active_page == 'history' else '' }}">
+      <span class="nav-icon">📜</span> Bill History
+    </a>
+    <a href="{{ url_for('compare_page') }}" class="nav-link {{ 'active' if active_page == 'compare' else '' }}">
+      <span class="nav-icon">📊</span> Compare Bills
+    </a>
+
+    <div class="nav-section-label">Assistant</div>
+    <a href="{{ url_for('wattson_page') }}" class="nav-link {{ 'active' if active_page == 'wattson' else '' }}">
+      <span class="nav-icon">🤖</span> Wattson AI
+    </a>
+  </nav>
+
+  <div class="nav-divider"></div>
+
+  <nav class="nav-links nav-links-bottom">
+    <a href="{{ url_for('settings_page') }}" class="nav-link {{ 'active' if active_page == 'settings' else '' }}">
+      <span class="nav-icon">⚙</span> Settings
+=======
+    <a href="{{ url_for('index') }}" class="nav-link {{ 'active' if active_page == 'upload' else '' }}">
+      <span class="nav-icon">📤</span> Upload Bill
+    </a>
+    <a href="{{ url_for('history_page') }}" class="nav-link {{ 'active' if active_page == 'history' else '' }}">
+      <span class="nav-icon">📊</span> Bill History
+    </a>
+    <a href="{{ url_for('compare_page') }}" class="nav-link {{ 'active' if active_page == 'compare' else '' }}">
+      <span class="nav-icon">🔀</span> Compare Bills
+>>>>>>> 678ede362b6dfb8746e9ab27f1e398fe3bc83a7e
+    </a>
+  </nav>
+
+  <div class="nav-footer">
+    <p class="note" style="margin:0;">
+      LLM explains. Python calculates.
+    </p>
+  </div>
+</aside>

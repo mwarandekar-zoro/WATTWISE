@@ -1,0 +1,11 @@
+Set the AC thermostat to 24-26 degrees Celsius instead of 18-20 degrees Celsius. Each degree lower than 24 degrees can increase compressor energy use by roughly 3-5%, since the compressor has to work harder to maintain a bigger temperature gap with the outside air.
+
+Clean or replace AC filters every 2-4 weeks during heavy use. A clogged filter restricts airflow, forcing the compressor to run longer for the same cooling effect.
+
+Use ceiling fans alongside the AC so the thermostat can be set a few degrees higher while still feeling cool, since moving air improves perceived comfort without extra compressor load.
+
+Avoid placing the outdoor condenser unit in direct sunlight or against a wall with poor airflow. Both make the compressor work harder and shorten its lifespan.
+
+Inverter ACs modulate compressor speed instead of switching fully on and off, and typically use 20-30% less energy than fixed-speed ACs for the same monthly cooling load.
+
+Running the AC for fewer continuous hours, or using a timer to switch it off a couple of hours before waking, reduces runtime directly since AC load scales almost linearly with hours used.

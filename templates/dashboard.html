@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>WattWise — Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="topbar">
+    <h1>⚡ WattWise</h1>
+    <span>Dashboard</span>
+  </div>
+
+  <div class="layout">
+    {% include "_nav.html" %}
+
+    <!-- ===================== CENTER: OVERVIEW ===================== -->
+    <main class="main-content">
+
+      <div class="card" style="margin-top:0;">
+        <h2 style="text-transform:none; font-size:20px; color:var(--text);">Welcome back 👋</h2>
+        <p class="note" style="margin-top:-4px;">
+          Here's a quick look at your electricity usage. Upload a new bill, dig into your history,
+          or ask {{ bot_name }} a question any time.
+        </p>
+      </div>
+
+      <div class="metric-grid" style="margin-top:0;">
+        <div class="metric">
+          <div class="value">{{ stats.total_bills }}</div>
+          <div class="label">Bills Analyzed</div>
+        </div>
+        <div class="metric">
+          <div class="value">{{ stats.avg_score if stats.avg_score is not none else '—' }}{{ '/100' if stats.avg_score is not none else '' }}</div>
+          <div class="label">Avg. Energy Score</div>
+        </div>
+        <div class="metric">
+          <div class="value">{{ '₹' + stats.avg_amount|string if stats.avg_amount is not none else '—' }}</div>
+          <div class="label">Avg. Bill Amount</div>
+        </div>
+        <div class="metric">
+          <div class="value">{{ stats.avg_units if stats.avg_units is not none else '—' }}</div>
+          <div class="label">Avg. Units / Month</div>
+        </div>
+      </div>
+
+      {% if latest %}
+      <div class="card">
+        <h2>Latest bill</h2>
+        <p style="color:var(--muted); font-size:14px; line-height:1.7;">
+          Billing Month: {{ latest.billing_month or '—' }}<br>
+          Units Consumed: {{ latest.units_consumed if latest.units_consumed is not none else '—' }}<br>
+          Bill Amount: {{ '₹' + latest.bill_amount|string if latest.bill_amount else '—' }}<br>
+          Change vs Previous: {{ (latest.percentage_change|string + '%') if latest.percentage_change is not none else '—' }}<br>
+          WattWise Energy Score: {{ (latest.energy_score|string + '/100 — ' + (latest.energy_rating or '')) if latest.energy_score is not none else '—' }}
+        </p>
+        <a class="back" href="{{ url_for('history_page') }}">View full history &amp; trends &rarr;</a>
+      </div>
+      {% else %}
+      <div class="card">
+        <h2>No bills analyzed yet</h2>
+        <p class="note">Upload your first electricity bill and WattWise will start tracking your usage here.</p>
+        <a href="{{ url_for('upload_page') }}"><button type="button">Upload Your First Bill</button></a>
+      </div>
+      {% endif %}
+
+      <div class="card">
+        <h2>Quick actions</h2>
+        <div class="quick-action-grid">
+          <a class="quick-action" href="{{ url_for('upload_page') }}">
+            <span class="quick-action-icon">📤</span>
+            <span class="quick-action-title">Upload Bill</span>
+            <span class="quick-action-sub">Analyze a new electricity bill</span>
+          </a>
+          <a class="quick-action" href="{{ url_for('history_page') }}">
+            <span class="quick-action-icon">📜</span>
+            <span class="quick-action-title">Bill History</span>
+            <span class="quick-action-sub">See past bills &amp; trends</span>
+          </a>
+          <a class="quick-action" href="{{ url_for('compare_page') }}">
+            <span class="quick-action-icon">📊</span>
+            <span class="quick-action-title">Compare Bills</span>
+            <span class="quick-action-sub">Side-by-side comparison</span>
+          </a>
+          <a class="quick-action" href="{{ url_for('wattson_page') }}">
+            <span class="quick-action-icon">🤖</span>
+            <span class="quick-action-title">Ask Wattson</span>
+            <span class="quick-action-sub">Chat about your energy usage</span>
+          </a>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- ===================== RIGHT: SIDEBAR (Chat + History) ===================== -->
+    {% include "_right_sidebar.html" %}
+  </div>
+
+  <script src="{{ url_for('static', filename='animations.js') }}"></script>
+</body>
+</html>

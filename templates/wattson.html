@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>WattWise — Wattson AI</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="topbar">
+    <h1>⚡ WattWise</h1>
+    <span>Wattson AI</span>
+  </div>
+
+  <div class="layout layout-no-sidebar">
+    {% include "_nav.html" %}
+
+    <!-- ===================== CENTER: FULL-PAGE WATTSON CHAT ===================== -->
+    <main class="main-content">
+      <div class="card wattson-page-card">
+        <div class="sidebar-header" style="border-radius:14px 14px 0 0;">
+          <div class="bot-avatar">🤖</div>
+          <div>
+            <div class="bot-name">{{ bot_name }}</div>
+            <div class="bot-sub">
+              {% if has_bill_context %}
+                ready to chat about your latest bill
+              {% else %}
+                ask a general energy-saving question, or upload a bill first for personalized answers
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="chip-row">
+          <div class="chip" data-q="Why did my bill increase?">Why did my bill increase?</div>
+          <div class="chip" data-q="Which appliance costs the most to run?">Which appliance costs most?</div>
+          <div class="chip" data-q="How can I save money next month?">How can I save money?</div>
+          <div class="chip" data-q="How does WattWise analyze my bill?">How does WattWise work?</div>
+        </div>
+
+        <div id="chat-log" class="chat-log wattson-page-log"></div>
+
+        <div class="chat-input-row">
+          <input type="text" id="chat-input" placeholder="Ask {{ bot_name }} anything...">
+          <button id="chat-send">➤</button>
+        </div>
+      </div>
+
+      {% if not has_bill_context %}
+      <div class="card">
+        <p class="note" style="margin:0;">
+          💡 {{ bot_name }} can give much more specific answers once you've
+          <a class="back" href="{{ url_for('upload_page') }}">analyzed a bill</a> — otherwise it'll
+          stick to general energy-saving advice grounded in WattWise's knowledge base.
+        </p>
+      </div>
+      {% endif %}
+    </main>
+  </div>
+
+  <script>
+    window.WATTSON_BOT_NAME = {{ bot_name | tojson }};
+    window.WATTSON_GREETING = {% if has_bill_context %}
+      "Hi, I'm " + {{ bot_name | tojson }} + "! I've got your last analyzed bill handy — ask me anything about it."
+    {% else %}
+      "Hi, I'm " + {{ bot_name | tojson }} + "! Ask me a general energy-saving question, or upload a bill first for personalized answers."
+    {% endif %};
+  </script>
+  <script src="{{ url_for('static', filename='wattson.js') }}"></script>
+</body>
+</html>

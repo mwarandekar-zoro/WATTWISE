@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>WattWise — History</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+</head>
+
+<body>
+  <div class="topbar">
+    <h1>⚡ WattWise</h1>
+    <span>History &amp; Trends</span>
+  </div>
+
+  <div class="layout">
+    {% include "_nav.html" %}
+
+    <main class="main-content">
+
+      {% with messages = get_flashed_messages() %}
+      {% if messages %}
+      {% for m in messages %}
+      <div class="flash"
+        style="border-color:var(--accent-2); color:var(--accent-2); background:rgba(52,211,153,0.1); margin-top:16px;">
+        {{ m }}</div>
+      {% endfor %}
+      {% endif %}
+      {% endwith %}
+
+      {% if not records %}
+      <div class="card" style="margin-top:20px;">
+        <h2>No history yet</h2>
+        <p class="note">Analyze a bill and it'll show up here, so {{ bot_name }} can track consumption over time.</p>
+      </div>
+      {% else %}
+
+      <div class="card" style="margin-top:20px;">
+        <h2>Consumption trend</h2>
+        <canvas id="trendChart" height="100"></canvas>
+      </div>
+
+      <div class="card">
+        <h2>Past bills</h2>
+        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+          <thead>
+            <tr style="text-align:left; color:var(--muted); border-bottom:1px solid var(--border);">
+              <th style="padding:8px 6px;">Analyzed</th>
+              <th style="padding:8px 6px;">Billing Month</th>
+              <th style="padding:8px 6px;">Units</th>
+              <th style="padding:8px 6px;">Amount</th>
+              <th style="padding:8px 6px;">Change</th>
+              <th style="padding:8px 6px;">Score</th>
+              <th style="padding:8px 6px;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in records %}
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:8px 6px; color:var(--muted);">{{ r.upload_date[:10] if r.upload_date else '—' }}</td>
+              <td style="padding:8px 6px;">{{ r.billing_month or '—' }}</td>
+              <td style="padding:8px 6px;">{{ r.units_consumed or '—' }}</td>
+              <td style="padding:8px 6px;">{{ '₹' + r.bill_amount|string if r.bill_amount else '—' }}</td>
+              <td style="padding:8px 6px;">{{ (r.percentage_change ~ '%') if r.percentage_change is not none else '—' }}
+              </td>
+              <td style="padding:8px 6px;">{{ (r.energy_score|string + '/100') if r.energy_score is not none else '—' }}
+              </td>
+              <td style="padding:8px 6px;"><a class="back" href="{{ url_for('export_pdf', bill_id=r.id) }}">Download
+                  PDF</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <div style="display:flex; gap:12px; margin-top:20px;">
+          <a href="{{ url_for('compare_page') }}" style="flex:1;"><button type="button" style="margin:0;">Compare
+              Bills</button></a>
+          <form action="{{ url_for('history_clear') }}" method="post"
+            onsubmit="return confirm('Clear all saved history? This can\'t be undone.');" style="flex:1;">
+            <button type="submit" style="background:var(--danger); margin:0; width:100%;">Clear all history</button>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+    </main>
+
+    <!-- ===================== RIGHT: SIDEBAR (Chat + History) ===================== -->
+    {% include "_right_sidebar.html" %}
+  </div>
+
+  <script>
+    {% if records %}
+    const trendData = {{ trend | tojson }};
+    const ctx = document.getElementById('trendChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: trendData.labels,
+        datasets: [
+          {
+            label: 'Units consumed',
+            data: trendData.units,
+            borderColor: '#ffcc00',
+            backgroundColor: 'rgba(255,204,0,0.15)',
+            tension: 0.3,
+            yAxisID: 'y',
+          },
+          {
+            label: 'Bill amount (₹)',
+            data: trendData.amounts,
+            borderColor: '#34d399',
+            backgroundColor: 'rgba(52,211,153,0.12)',
+            tension: 0.3,
+            yAxisID: 'y1',
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        animation: { duration: 900, easing: 'easeOutCubic' },
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { labels: { color: '#e8edf7' } }
+        },
+        scales: {
+          x: { ticks: { color: '#93a0bd' }, grid: { color: '#223154' } },
+          y: { position: 'left', ticks: { color: '#93a0bd' }, grid: { color: '#223154' }, title: { display: true, text: 'Units', color: '#93a0bd' } },
+          y1: { position: 'right', ticks: { color: '#93a0bd' }, grid: { display: false }, title: { display: true, text: '₹', color: '#93a0bd' } }
+        }
+      }
+    });
+    {% endif %}
+  </script>
+</body>
+
+</html>

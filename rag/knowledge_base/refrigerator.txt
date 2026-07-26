@@ -1,0 +1,9 @@
+A refrigerator compressor does not run continuously. It cycles on and off to maintain temperature, which is why duty-cycle-adjusted estimates (roughly 30-40% of the time at rated wattage) are far more accurate than assuming 100% runtime.
+
+Keep the refrigerator away from direct sunlight and a few inches from the wall so the condenser coils can dissipate heat efficiently, instead of making the compressor work harder.
+
+Set the fridge compartment to 3-5 degrees Celsius and the freezer to around -18 degrees Celsius. Colder settings than necessary waste energy without meaningfully improving food safety.
+
+Avoid keeping the fridge door open for long periods, and let hot food cool to room temperature before placing it inside, since the compressor has to remove that extra heat load.
+
+Check the door seal periodically. A worn gasket lets cold air leak out, causing the compressor to run more often to compensate, even though the fridge is on for the same number of hours.

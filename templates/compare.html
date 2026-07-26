@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>WattWise — Compare Bills</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="topbar">
+    <h1>⚡ WattWise</h1>
+    <span>Compare Bills</span>
+  </div>
+
+  <div class="layout">
+    {% include "_nav.html" %}
+
+    <!-- ===================== CENTER: COMPARE ===================== -->
+    <main class="main-content">
+      {% if not all_bills %}
+      <div class="card">
+        <h2>No saved bills yet</h2>
+        <p class="note">Analyze at least two bills and they'll show up here so you can compare them side by side.</p>
+<<<<<<< HEAD
+        <a class="back" href="{{ url_for('upload_page') }}">&larr; Upload a bill</a>
+=======
+        <a class="back" href="{{ url_for('index') }}">&larr; Upload a bill</a>
+>>>>>>> 678ede362b6dfb8746e9ab27f1e398fe3bc83a7e
+      </div>
+      {% else %}
+
+      <div class="card">
+        <h2>Select bills to compare</h2>
+        <p class="note" style="margin-top:-8px;">
+          Pick any number of bills — two, a few, or your entire history — then compare them side by side.
+        </p>
+
+        <div class="compare-toolbar">
+          <button type="button" id="select-all-btn" class="compare-toolbar-btn">Select All ({{ all_bills|length }})</button>
+          <button type="button" id="clear-selection-btn" class="compare-toolbar-btn secondary">Clear selection</button>
+          <span class="compare-count" id="selected-count">0 selected</span>
+        </div>
+
+        <div class="compare-list" id="compare-list">
+          {% for b in all_bills %}
+          <label class="compare-item">
+            <input type="checkbox" class="compare-checkbox" value="{{ b.id }}">
+            <div class="compare-item-body">
+              <div class="compare-item-main">
+                <span class="compare-item-month">{{ b.billing_month or (b.upload_date[:10] if b.upload_date else '—') }}</span>
+                <span class="compare-item-date">uploaded {{ b.upload_date[:10] if b.upload_date else '—' }}</span>
+              </div>
+              <div class="compare-item-meta">
+                <span>{{ b.units_consumed if b.units_consumed is not none else '—' }} units</span>
+                <span>{{ '₹' + b.bill_amount|string if b.bill_amount else '—' }}</span>
+                <span class="h-score">{{ (b.energy_score|string + '/100') if b.energy_score is not none else '—' }}</span>
+              </div>
+            </div>
+          </label>
+          {% endfor %}
+        </div>
+
+        <button type="button" id="compare-btn" disabled style="margin-top:20px;">Compare Selected (0)</button>
+      </div>
+
+      <div class="card" id="compare-results" style="display:none;">
+        <h2>Side-by-side comparison</h2>
+        <div style="overflow-x:auto;">
+          <table id="compare-table" style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" id="compare-chart-card" style="display:none;">
+        <h2>Trend across selected bills</h2>
+        <canvas id="compareChart" height="110"></canvas>
+      </div>
+
+      {% endif %}
+    </main>
+
+    <!-- ===================== RIGHT: SIDEBAR (Chat + History) ===================== -->
+    {% include "_right_sidebar.html" %}
+  </div>
+
+  <script>
+    // All saved bills, available client-side so comparisons render instantly
+    // with no extra server round-trip -- any number can be selected.
+    const ALL_BILLS = {{ all_bills | tojson }};
+    const BILLS_BY_ID = {};
+    ALL_BILLS.forEach(b => { BILLS_BY_ID[b.id] = b; });
+
+    const checkboxes = document.querySelectorAll('.compare-checkbox');
+    const selectedCountEl = document.getElementById('selected-count');
+    const compareBtn = document.getElementById('compare-btn');
+    const selectAllBtn = document.getElementById('select-all-btn');
+    const clearBtn = document.getElementById('clear-selection-btn');
+
+    function getSelectedIds() {
+      return Array.from(checkboxes).filter(cb => cb.checked).map(cb => parseInt(cb.value, 10));
+    }
+
+    function updateToolbar() {
+      const n = getSelectedIds().length;
+      selectedCountEl.textContent = n + ' selected';
+      compareBtn.textContent = 'Compare Selected (' + n + ')';
+      compareBtn.disabled = n < 2;
+    }
+
+    checkboxes.forEach(cb => cb.addEventListener('change', updateToolbar));
+
+    selectAllBtn.addEventListener('click', function () {
+      checkboxes.forEach(cb => cb.checked = true);
+      updateToolbar();
+    });
+
+    clearBtn.addEventListener('click', function () {
+      checkboxes.forEach(cb => cb.checked = false);
+      updateToolbar();
+      document.getElementById('compare-results').style.display = 'none';
+      document.getElementById('compare-chart-card').style.display = 'none';
+    });
+
+    let compareChartInstance = null;
+
+    compareBtn.addEventListener('click', function () {
+      const ids = getSelectedIds();
+      if (ids.length < 2) return;
+
+      // Oldest to newest so the table/chart read left-to-right in time order
+      const bills = ids.map(id => BILLS_BY_ID[id]).sort((a, b) => (a.upload_date || "").localeCompare(b.upload_date || ""));
+
+      renderTable(bills);
+      renderChart(bills);
+
+      document.getElementById('compare-results').style.display = 'block';
+      document.getElementById('compare-chart-card').style.display = 'block';
+      document.getElementById('compare-results').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+
+    function renderTable(bills) {
+      const thead = document.querySelector('#compare-table thead');
+      const tbody = document.querySelector('#compare-table tbody');
+
+      const headerCells = ['Metric'].concat(bills.map(b => b.billing_month || (b.upload_date ? b.upload_date.slice(0, 10) : '—')));
+      thead.innerHTML = '<tr style="text-align:left; color:var(--muted); border-bottom:1px solid var(--border);">' +
+        headerCells.map(h => '<th style="padding:8px 10px;">' + h + '</th>').join('') + '</tr>';
+
+      const rows = [
+        { label: 'Units consumed', key: b => b.units_consumed ?? '—' },
+        { label: 'Bill amount', key: b => b.bill_amount ? '₹' + b.bill_amount : '—' },
+        { label: 'Cost / unit', key: b => b.cost_per_unit ? '₹' + b.cost_per_unit : '—' },
+        { label: '% change', key: b => (b.percentage_change !== null && b.percentage_change !== undefined) ? b.percentage_change + '%' : '—' },
+        { label: 'Energy score', key: b => (b.energy_score !== null && b.energy_score !== undefined) ? b.energy_score + '/100' : '—' },
+        { label: 'Rating', key: b => b.energy_rating || '—' },
+        { label: 'Uploaded', key: b => b.upload_date ? b.upload_date.slice(0, 10) : '—' },
+      ];
+
+      tbody.innerHTML = rows.map(row =>
+        '<tr style="border-bottom:1px solid var(--border);">' +
+        '<td style="padding:8px 10px; color:var(--muted);">' + row.label + '</td>' +
+        bills.map(b => '<td style="padding:8px 10px;">' + row.key(b) + '</td>').join('') +
+        '</tr>'
+      ).join('');
+    }
+
+    function renderChart(bills) {
+      const ctx = document.getElementById('compareChart').getContext('2d');
+      if (compareChartInstance) compareChartInstance.destroy();
+
+      compareChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: bills.map(b => b.billing_month || (b.upload_date ? b.upload_date.slice(0, 10) : '—')),
+          datasets: [
+            {
+              label: 'Units consumed',
+              data: bills.map(b => b.units_consumed),
+              backgroundColor: 'rgba(255,204,0,0.55)',
+              yAxisID: 'y',
+            },
+            {
+              label: 'Bill amount (₹)',
+              data: bills.map(b => b.bill_amount),
+              backgroundColor: 'rgba(52,211,153,0.55)',
+              yAxisID: 'y1',
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          animation: { duration: 700, easing: 'easeOutCubic' },
+          plugins: { legend: { labels: { color: '#e8edf7' } } },
+          scales: {
+            x: { ticks: { color: '#93a0bd' }, grid: { color: '#223154' } },
+            y: { position: 'left', ticks: { color: '#93a0bd' }, grid: { color: '#223154' }, title: { display: true, text: 'Units', color: '#93a0bd' } },
+            y1: { position: 'right', ticks: { color: '#93a0bd' }, grid: { display: false }, title: { display: true, text: '₹', color: '#93a0bd' } }
+          }
+        }
+      });
+    }
+
+    updateToolbar();
+  </script>
+</body>
+</html>

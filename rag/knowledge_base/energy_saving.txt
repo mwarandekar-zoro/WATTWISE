@@ -1,0 +1,7 @@
+Appliances that run continuously or for very long hours, such as refrigerators, water heaters, and ACs during hot months, usually dominate a household's electricity bill far more than appliances that run briefly, even if those short-use appliances have higher instantaneous wattage.
+
+Standby power, sometimes called phantom load, from chargers, set-top boxes, and appliances left plugged in but switched off at the device can add up to a noticeable share of a bill over a month. Switching off at the wall avoids this.
+
+Comparing a bill to the previous month is more informative than comparing to a fixed "ideal" number, since it accounts for household-specific factors like number of occupants, appliance count, and local climate.
+
+Small, consistent changes, like a 2-degree higher AC setting or turning off a water heater at the wall, tend to be more sustainable long-term than drastic one-time cuts that get abandoned after a few days.

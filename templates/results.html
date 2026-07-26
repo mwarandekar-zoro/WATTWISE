@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>WattWise — Results</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="topbar">
+    <h1>⚡ WattWise</h1>
+    <span>AI Energy Advisor</span>
+  </div>
+
+  <div class="layout">
+    {% include "_nav.html" %}
+
+    <!-- ===================== CENTER: DASHBOARD ===================== -->
+    <main class="main-content">
+<<<<<<< HEAD
+      <a class="back" href="{{ url_for('upload_page') }}">&larr; Analyze another bill</a>
+=======
+      <a class="back" href="{{ url_for('index') }}">&larr; Analyze another bill</a>
+>>>>>>> 678ede362b6dfb8746e9ab27f1e398fe3bc83a7e
+
+      <div class="metric-grid" style="margin-top:20px;">
+        <div class="metric">
+          <div class="value">
+            {% if bill_data.units_consumed is not none %}
+              <span data-countup="{{ bill_data.units_consumed }}">0</span>
+            {% else %}—{% endif %}
+          </div>
+          <div class="label">Units Consumed</div>
+        </div>
+        <div class="metric">
+          <div class="value">
+            {% if bill_data.bill_amount %}
+              <span data-countup="{{ bill_data.bill_amount }}" data-prefix="₹">₹0</span>
+            {% else %}—{% endif %}
+          </div>
+          <div class="label">Bill Amount</div>
+        </div>
+        <div class="metric {{ 'up' if metrics.trend == 'increased' else '' }}">
+          <div class="value">
+            {% if metrics.percentage_change is number %}
+              {{ '+' if metrics.trend == 'increased' else '' }}<span data-countup="{{ metrics.percentage_change }}" data-decimals="1" data-suffix="%">0%</span>
+            {% else %}—{% endif %}
+          </div>
+          <div class="label">vs Previous ({{ previous_units or '—' }} units)</div>
+        </div>
+        <div class="metric">
+          <div class="value">
+            {% if score.score is number %}
+              <span data-countup="{{ score.score }}" data-suffix="/100">0/100</span>
+            {% else %}—{% endif %}
+          </div>
+          <div class="label">{{ score.rating }}</div>
+        </div>
+      </div>
+
+      {% if partial_analysis %}
+      <div class="card">
+        <h2>Partial bill analysis</h2>
+        <p class="note">
+          WattWise could not reliably derive every standard field for the calculation
+          engine, even after visually reading the document. The analysis below is
+          based on {{ bot_name }} reading the bill page directly.
+        </p>
+      </div>
+      {% endif %}
+
+      <div class="card">
+        <h2>Bill details</h2>
+        <p style="color:var(--muted); font-size:14px; line-height:1.7;">
+          Consumer No: {{ bill_data.consumer_number or '—' }}<br>
+          Billing Month: {{ bill_data.billing_month or '—' }}<br>
+          Cost per Unit: {{ metrics.cost_per_unit if metrics.cost_per_unit != '—' else '—' }}<br>
+          Difference: {{ metrics.difference }} units ({{ metrics.trend }})
+        </p>
+        {% if visual_notes %}
+        <p class="note" style="margin-top:12px;">
+          <strong style="color:var(--accent-2);">👁 Noticed while reading the bill image:</strong>
+          {{ visual_notes }}
+        </p>
+        {% endif %}
+      </div>
+
+      <div class="card">
+        <h2>🤖 {{ bot_name }}'s Analysis</h2>
+        <p style="line-height:1.7;">{{ ai_analysis }}</p>
+        {% if rag_sources %}
+        <p class="note" style="margin-top:14px;">
+          Grounded in retrieved knowledge from: {{ rag_sources|join(', ') }}
+        </p>
+        {% endif %}
+      </div>
+
+      {% if breakdown %}
+      <div class="card">
+        <h2>Appliance contribution</h2>
+        {% for name, data in breakdown.items() %}
+        <div class="bar-row">
+          <div class="name">{{ name }}</div>
+          <div class="bar-track">
+            <div class="bar-fill" data-width="{{ data.percent_share }}"></div>
+          </div>
+          <div class="pct">{{ data.percent_share }}%</div>
+        </div>
+        {% endfor %}
+        <p class="note">Estimates use rated wattage, typical duty-cycle factors, and BEE star rating (if given) — not a live meter reading.</p>
+      </div>
+      {% endif %}
+
+      <div class="card">
+        <h2>Energy score note</h2>
+        <p class="note">
+          This is a WattWise Energy Score, not an official MSEDCL or government rating.
+          It's a simple heuristic based on your consumption trend and monthly usage band.
+        </p>
+      </div>
+
+      {% if bill_id %}
+      <div class="card">
+        <h2>📄 Export &amp; Share</h2>
+        <p class="note" style="margin-bottom:14px;">Download this analysis as a PDF, or email it to yourself.</p>
+        <a href="{{ url_for('export_pdf', bill_id=bill_id) }}">
+          <button type="button">Download PDF Report</button>
+        </a>
+
+        {% if email_configured %}
+        <div style="display:flex; gap:8px; margin-top:14px;">
+          <input type="email" id="email-input" placeholder="you@example.com">
+          <button id="email-send" type="button" style="margin-top:0; width:auto; padding:10px 18px;">Send</button>
+        </div>
+        <div id="email-result" class="note" style="margin-top:10px;"></div>
+        {% else %}
+        <p class="note" style="margin-top:14px;">Email isn't configured yet — set SMTP_HOST / SMTP_USER / SMTP_PASS in your .env to enable emailing reports.</p>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <!-- ===================== SAVINGS SIMULATOR ===================== -->
+      <div class="card">
+        <h2>💰 Savings Simulator</h2>
+        <p class="note" style="margin-bottom:14px;">
+          See how many units and rupees you'd save by reducing an appliance's daily usage.
+        </p>
+
+        <label for="sim-appliance">Appliance</label>
+        <select id="sim-appliance">
+          {% for name in appliances %}
+          <option value="{{ name }}">{{ name }}</option>
+          {% endfor %}
+        </select>
+        <select id="sim-star" class="star-select">
+          <option value="">Star rating (optional)</option>
+          {% for s in star_ratings %}
+          <option value="{{ s }}">{{ s }}★</option>
+          {% endfor %}
+        </select>
+
+        <div class="appliance-grid" style="margin-top:10px;">
+          <div>
+            <label for="sim-current">Current hours/day</label>
+            <input type="number" step="0.5" id="sim-current" placeholder="e.g. 8">
+          </div>
+          <div>
+            <label for="sim-new">New (reduced) hours/day</label>
+            <input type="number" step="0.5" id="sim-new" placeholder="e.g. 6">
+          </div>
+        </div>
+
+        <button id="sim-run" type="button">Simulate Savings</button>
+
+        <div id="sim-result" class="sim-result" style="display:none;"></div>
+      </div>
+
+
+
+      <div class="card">
+        <h2>About the AI analysis</h2>
+        <p class="note">
+          {{ bot_name }}'s recommendations are grounded in a curated energy-saving
+          knowledge base (RAG) wherever relevant, on top of the numbers calculated
+          deterministically by WattWise's Python engine. {{ bot_name }} never
+          performs the arithmetic itself — it explains and personalizes results
+          that are already computed and verified.
+        </p>
+      </div>
+    </main>
+
+    <!-- ===================== RIGHT: SIDEBAR (Chat + History) ===================== -->
+    {% include "_right_sidebar.html" %}
+  </div>
+
+  <script>
+    const costPerUnit = {{ (metrics.cost_per_unit if metrics.cost_per_unit != '—' else 'null') }};
+  </script>
+  <script src="{{ url_for('static', filename='animations.js') }}"></script>
+
+  <script>
+    // ===================== SAVINGS SIMULATOR =====================
+    const simRun = document.getElementById('sim-run');
+    const simResult = document.getElementById('sim-result');
+
+    simRun.addEventListener('click', async function() {
+      const appliance = document.getElementById('sim-appliance').value;
+      const star_rating = document.getElementById('sim-star').value;
+      const currentHours = document.getElementById('sim-current').value;
+      const newHours = document.getElementById('sim-new').value;
+
+      if (!currentHours || !newHours) {
+        simResult.style.display = 'block';
+        simResult.innerHTML = '<span style="color:var(--danger);">Please enter both current and new hours.</span>';
+        return;
+      }
+
+      simRun.disabled = true;
+      try {
+        const res = await fetch('/simulate_savings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            appliance: appliance,
+            current_hours: currentHours,
+            new_hours: newHours,
+            cost_per_unit: costPerUnit,
+            star_rating: star_rating
+          })
+        });
+        const data = await res.json();
+        simResult.style.display = 'block';
+
+        if (data.error) {
+          simResult.innerHTML = '<span style="color:var(--danger);">' + data.error + '</span>';
+        } else {
+          simResult.innerHTML =
+            '<strong style="color:var(--accent-2); font-size:18px;">Reduce ' + appliance + ' by ' +
+            (currentHours - newHours).toFixed(1) + ' hours/day → save approximately ' +
+            data.reduction_kwh + ' kWh (₹' + (data.estimated_savings_rupees ?? '—') + ') per month.</strong>';
+        }
+      } catch (err) {
+        simResult.style.display = 'block';
+        simResult.innerHTML = '<span style="color:var(--danger);">Something went wrong reaching the server.</span>';
+      } finally {
+        simRun.disabled = false;
+      }
+    });
+
+    // ===================== EMAIL REPORT =====================
+    const emailSend = document.getElementById('email-send');
+    if (emailSend) {
+      emailSend.addEventListener('click', async function () {
+        const email = document.getElementById('email-input').value.trim();
+        const resultBox = document.getElementById('email-result');
+        if (!email) {
+          resultBox.textContent = 'Enter an email address.';
+          return;
+        }
+        emailSend.disabled = true;
+        resultBox.textContent = 'Sending…';
+        try {
+          const res = await fetch('/email_report', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email })
+          });
+          const data = await res.json();
+          resultBox.textContent = data.message;
+          resultBox.style.color = data.success ? 'var(--accent-2)' : 'var(--danger)';
+        } catch (err) {
+          resultBox.textContent = 'Something went wrong reaching the server.';
+        } finally {
+          emailSend.disabled = false;
+        }
+      });
+    }
+  </script>
+</body>
+</html>

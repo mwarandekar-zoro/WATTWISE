@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>WattWise — AI Energy Advisor</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="topbar">
+    <h1>⚡ WattWise</h1>
+    <span>AI Energy Advisor · meet {{ bot_name }}</span>
+  </div>
+
+  <div class="layout">
+    {% include "_nav.html" %}
+
+    <!-- ===================== CENTER: UPLOAD FORM ===================== -->
+    <main class="main-content">
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          {% for m in messages %}
+            <div class="flash">{{ m }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <div class="card">
+        <h2>Upload your electricity bill</h2>
+        <p class="note" style="margin-top:-8px; margin-bottom:16px;">
+          WattWise reads your bill both with fast text extraction and, when needed,
+          by looking at the actual document image the way a person would — so it
+          can pick up fields OCR alone might miss.
+        </p>
+        <form action="{{ url_for('analyze_bill') }}" method="post" enctype="multipart/form-data">
+          <label for="current_bill">Current bill (PDF or image)</label>
+          <input type="file" id="current_bill" name="current_bill" accept=".pdf,.jpg,.jpeg,.png" required>
+
+          <label for="previous_bill">Previous bill (optional — for comparison)</label>
+          <input type="file" id="previous_bill" name="previous_bill" accept=".pdf,.jpg,.jpeg,.png">
+
+          <label for="previous_units">Or enter previous month's units manually</label>
+          <input type="number" id="previous_units" name="previous_units" placeholder="e.g. 290">
+
+          <h2 style="margin-top:28px;">Appliance usage (optional)</h2>
+          <p class="note" style="margin-top:-6px;">Add hours/day and, if you know it, the BEE star rating for a more accurate estimate.</p>
+          <div class="appliance-grid">
+            {% for name in appliances %}
+            <div>
+              <label for="app_{{ loop.index }}">{{ name }} — hours/day</label>
+              <input type="number" step="0.5" id="app_{{ loop.index }}" name="appliance_{{ name }}" placeholder="e.g. 8">
+              <select class="star-select" name="star_{{ name }}">
+                <option value="">Star rating (optional)</option>
+                {% for s in star_ratings %}
+                <option value="{{ s }}">{{ s }}★</option>
+                {% endfor %}
+              </select>
+            </div>
+            {% endfor %}
+          </div>
+
+          <button type="submit">Analyze Bill</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>💡 Just want to try the savings simulator?</h2>
+        <p class="note">You don't need to upload a bill first — pick an appliance and compare current vs. reduced usage hours.</p>
+        <div class="appliance-grid" style="margin-top:14px;">
+          <div>
+            <label for="sim_appliance">Appliance</label>
+            <select id="sim_appliance">
+              {% for name in appliances %}
+              <option value="{{ name }}">{{ name }}</option>
+              {% endfor %}
+            </select>
+            <select id="sim_star" class="star-select">
+              <option value="">Star rating (optional)</option>
+              {% for s in star_ratings %}
+              <option value="{{ s }}">{{ s }}★</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div></div>
+          <div>
+            <label for="sim_current">Current hours/day</label>
+            <input type="number" step="0.5" id="sim_current" placeholder="e.g. 8">
+          </div>
+          <div>
+            <label for="sim_new">New (reduced) hours/day</label>
+            <input type="number" step="0.5" id="sim_new" placeholder="e.g. 6">
+          </div>
+        </div>
+        <button id="sim_button" style="margin-top:18px;">Simulate Savings</button>
+        <div id="sim_result" class="sim-result" style="display:none;"></div>
+      </div>
+    </main>
+
+    <!-- ===================== RIGHT: SIDEBAR (Chat + History) ===================== -->
+    {% include "_right_sidebar.html" %}
+  </div>
+
+  <script src="{{ url_for('static', filename='animations.js') }}"></script>
+  <script>
+    document.getElementById('sim_button').addEventListener('click', async function () {
+      const appliance = document.getElementById('sim_appliance').value;
+      const star_rating = document.getElementById('sim_star').value;
+      const current_hours = document.getElementById('sim_current').value;
+      const new_hours = document.getElementById('sim_new').value;
+      const resultBox = document.getElementById('sim_result');
+
+      if (!current_hours || !new_hours) {
+        resultBox.style.display = 'block';
+        resultBox.innerHTML = '<span style="color:var(--danger);">Enter both current and new hours/day.</span>';
+        return;
+      }
+
+      resultBox.style.display = 'block';
+      resultBox.textContent = 'Calculating…';
+      try {
+        const res = await fetch('/simulate_savings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ appliance, current_hours, new_hours, star_rating })
+        });
+        const data = await res.json();
+        if (data.error) {
+          resultBox.innerHTML = '<span style="color:var(--danger);">' + data.error + '</span>';
+          return;
+        }
+        resultBox.innerHTML = 'Reducing ' + appliance + ' from ' + current_hours + 'h to ' + new_hours +
+          'h/day saves approximately <strong style="color:var(--accent-2)">' + data.reduction_kwh +
+          ' kWh/month</strong>, or about <strong style="color:var(--accent-2)">₹' +
+          (data.estimated_savings_rupees ?? '—') + '/month</strong> (using a default ₹8/unit estimate — analyze a bill for your real rate).';
+      } catch (err) {
+        resultBox.innerHTML = '<span style="color:var(--danger);">Something went wrong reaching the server.</span>';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+Water heaters (geysers) are typically 1500-2000W and, unlike a fridge or AC, run at close to full rated power whenever switched on, so limiting daily "on" time has a direct, near-linear effect on consumption.
+
+Instant or tankless water heaters only draw power while water is running, whereas storage-tank geysers cycle on periodically to maintain temperature even when no one is using hot water. Turning off a storage geyser at the wall when not needed avoids this standby cost.
+
+Setting the thermostat to 50-55 degrees Celsius instead of maximum is usually enough for bathing and reduces standby heat loss from a storage tank.
+
+Insulating the hot water pipes and tank, if not already insulated, reduces the energy needed to keep water at temperature between uses.

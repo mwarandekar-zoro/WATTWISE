@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>WattWise — Settings</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="topbar">
+    <h1>⚡ WattWise</h1>
+    <span>Settings</span>
+  </div>
+
+  <div class="layout">
+    {% include "_nav.html" %}
+
+    <!-- ===================== CENTER: SETTINGS ===================== -->
+    <main class="main-content">
+
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          {% for m in messages %}
+            <div class="flash" style="border-color:var(--accent-2); color:var(--accent-2); background:rgba(52,211,153,0.1);">{{ m }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <div class="card" style="margin-top:0;">
+        <h2>Integration status</h2>
+        <p class="note" style="margin-top:-8px; margin-bottom:14px;">
+          These are read from environment variables at startup — nothing here can be changed
+          from the browser, for security. Update your .env file and restart the app to change them.
+        </p>
+        <div class="settings-row">
+          <span class="settings-label">Gemini AI analysis</span>
+          <span class="settings-status {{ 'ok' if llm_configured else 'off' }}">
+            {{ '● Configured' if llm_configured else '○ Not configured' }}
+          </span>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">Model</span>
+          <span class="settings-value">{{ llm_model }}</span>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">Email reports (SMTP)</span>
+          <span class="settings-status {{ 'ok' if email_configured else 'off' }}">
+            {{ '● Configured' if email_configured else '○ Not configured' }}
+          </span>
+        </div>
+        {% if not llm_configured %}
+        <p class="note" style="margin-top:12px;">Set <code>GEMINI_API_KEY</code> in your environment to enable AI analysis and Wattson chat.</p>
+        {% endif %}
+        {% if not email_configured %}
+        <p class="note" style="margin-top:4px;">Set <code>SMTP_HOST</code>, <code>SMTP_USER</code>, and <code>SMTP_PASS</code> to enable emailing reports.</p>
+        {% endif %}
+      </div>
+
+      <div class="card">
+        <h2>Appliance reference data</h2>
+        <p class="note" style="margin-top:-8px; margin-bottom:14px;">
+          Used by the savings simulator and appliance breakdown — rated wattage and typical
+          duty-cycle factor per appliance.
+        </p>
+        <table class="settings-table">
+          <thead>
+            <tr><th>Appliance</th><th>Wattage</th><th>Duty cycle</th></tr>
+          </thead>
+          <tbody>
+            {% for name, spec in appliances.items() %}
+            <tr>
+              <td>{{ name }}</td>
+              <td>{{ spec.wattage }} W</td>
+              <td>{{ (spec.duty_cycle * 100)|round|int }}%</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>BEE star rating multipliers</h2>
+        <p class="note" style="margin-top:-8px; margin-bottom:14px;">
+          Approximate efficiency multiplier applied vs. an unrated/1-star appliance.
+        </p>
+        <table class="settings-table">
+          <thead>
+            <tr><th>Stars</th><th>Multiplier</th></tr>
+          </thead>
+          <tbody>
+            {% for stars, multiplier in star_ratings.items() %}
+            <tr>
+              <td>{{ stars }}★</td>
+              <td>{{ multiplier }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>Data management</h2>
+        <p class="note" style="margin-top:-8px; margin-bottom:14px;">
+          {{ total_bills }} bill{{ 's' if total_bills != 1 else '' }} currently saved in your local history.
+        </p>
+        <form action="{{ url_for('history_clear') }}" method="post" onsubmit="return confirm('Clear all saved history? This can\'t be undone.');">
+          <button type="submit" style="background:var(--danger);">🗑 Clear All History</button>
+        </form>
+      </div>
+
+    </main>
+
+    <!-- ===================== RIGHT: SIDEBAR (Chat + History) ===================== -->
+    {% include "_right_sidebar.html" %}
+  </div>
+
+  <script src="{{ url_for('static', filename='animations.js') }}"></script>
+</body>
+</html>
